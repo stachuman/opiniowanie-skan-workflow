@@ -2,7 +2,7 @@
 
 System do zarządzania opiniami sądowymi i dokumentami z zaawansowaną funkcją OCR (Optical Character Recognition).
 
-## 🌟 Główne funkcje
+## Główne funkcje
 
 - **Hierarchiczna struktura dokumentów**:
   - Opinie główne (dokumenty Word)
@@ -29,7 +29,7 @@ System do zarządzania opiniami sądowymi i dokumentami z zaawansowaną funkcją
   - Przetwarzanie OCR w tle bez blokowania interfejsu
   - Śledzenie postępu OCR w czasie rzeczywistym
 
-## 💻 Technologie
+## Technologie
 
 - **Backend**: FastAPI, Python 3.8+
 - **Baza danych**: SQLite z SQLModel
@@ -104,7 +104,7 @@ opiniowanie-skan-workflow/
 └── requirements.txt      # Zależności Pythona
 ```
 
-## 📋 Przepływ pracy
+## Przepływ pracy
 
 ### Tworzenie nowej opinii
 
@@ -128,7 +128,7 @@ opiniowanie-skan-workflow/
 3. Możliwość ponownego uruchomienia OCR jeśli potrzeba
 4. Dla plików PDF - zaawansowany podgląd z możliwością zaznaczania fragmentów do selektywnego OCR
 
-## 🔄 Rozwój projektu
+## Rozwój projektu
 
 ### Znane problemy
 
@@ -140,10 +140,4 @@ opiniowanie-skan-workflow/
 - Implementacja przetwarzania OCR w mniejszych fragmentach
 - Optymalizacja zarządzania pamięcią GPU podczas przetwarzania OCR
 
-## 📜 Licencja
 
-[Określ licencję, np. MIT, GNU GPL, itp.]
-
-## 👥 Autorzy
-
-[Dodaj informacje o autorach projektu]
