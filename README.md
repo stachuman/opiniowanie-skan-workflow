@@ -37,7 +37,7 @@ System do zarządzania opiniami sądowymi i dokumentami z zaawansowaną funkcją
 - **OCR**: Tesseract, model AI Qwen2.5-VL
 - **Przetwarzanie plików**: PyPDF2, pdf2image, PIL
 
-## 🚀 Instalacja
+## Instalacja
 
 ### Wymagania wstępne
 
@@ -79,7 +79,7 @@ System do zarządzania opiniami sądowymi i dokumentami z zaawansowaną funkcją
 6. **Dostęp do aplikacji**
    Otwórz przeglądarkę i przejdź do: `http://localhost:8000`
 
-## 📂 Struktura projektu
+## Struktura projektu
 
 ```
 opiniowanie-skan-workflow/
@@ -90,6 +90,7 @@ opiniowanie-skan-workflow/
 │   └── background_tasks.py # System zadań w tle
 ├── tasks/                # Moduł zarządzania zadaniami OCR
 │   ├── ocr_manager.py    # Zarządzanie kolejką OCR
+....
 │   └── ocr/              # Implementacja OCR
 │       ├── models.py     # Modele OCR
 │       ├── pipeline.py   # Pipeline przetwarzania OCR
@@ -132,12 +133,7 @@ opiniowanie-skan-workflow/
 
 ### Znane problemy
 
-- Obcinanie tekstu OCR do około 4800 znaków (prawdopodobna przyczyna: ograniczenie parametru max_new_tokens w funkcji process_image_to_text)
-
 ### Planowane ulepszenia
 
-- Zwiększenie limitu tokenów dla OCR
-- Implementacja przetwarzania OCR w mniejszych fragmentach
-- Optymalizacja zarządzania pamięcią GPU podczas przetwarzania OCR
 
 
