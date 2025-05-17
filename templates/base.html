@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ title or "Opinie sądowe" }}</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css"
+        rel="stylesheet" crossorigin="anonymous">
+
+  <!-- Bootstrap‑Icons CSS (LOCAL) -->
+  <link rel="stylesheet"
+        href="{{ url_for('static', path='bootstrap-icons/bootstrap-icons.css') }}">
+
+  <style>
+    tr[data-href]         { cursor: pointer; }
+    tr[data-href]:hover   { background-color: #f8f9fa; }
+  </style>
+</head>
+
+<body class="bg-light">
+
+  <!-- ==========  Navbar  ========== -->
+<!-- Aktualizacja nawigacji w base.html -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container">
+    <a class="navbar-brand" href="{{ url_for('list_opinions') }}">Opinie sądowe</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+            data-bs-target="#navbars" aria-controls="navbars" aria-expanded="false"
+            aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbars">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('list_opinions') }}">
+            <i class="bi bi-list"></i> Lista opinii
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('upload_form') }}">
+            <i class="bi bi-cloud-upload"></i> Nowa opinia
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('list_documents') }}">
+            <i class="bi bi-files"></i> Wszystkie dokumenty
+          </a>
+        </li>
+      </ul>
+      {# miejsce na dodatkowe przyciski – np. filtr #}
+      {% block nav_extra %}{% endblock %}
+    </div>
+  </div>
+</nav>
+ 
+
+<!-- /Navbar -->
+
+  <!-- ==========  Główna zawartość  ========== -->
+  <main class="container py-4">
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="text-center text-muted my-4 small">
+    &copy; {{ (now() if now is defined else namespace(year=0)).year or  '' }} Court Workflow
+  </footer>
+
+  <!-- Bootstrap JS (bundle) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"
+          crossorigin="anonymous"></script>
+
+  <!-- Klikalny wiersz tabeli -->
+  <script>
+    document.querySelectorAll('tr[data-href]').forEach(row => {
+      row.addEventListener('click', () => window.location = row.dataset.href);
+    });
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

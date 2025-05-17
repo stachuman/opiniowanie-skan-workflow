@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>{% if is_empty_opinion %}Wgraj dokument Word dla opinii{% else %}Aktualizacja dokumentu{% endif %}</h2>
+  <div>
+    <a href="{{ url_for('document_detail', doc_id=doc.id) }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Powrót do dokumentu
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-light">
+    <h5 class="card-title mb-0">
+      {% if is_empty_opinion %}
+        <i class="bi bi-file-earmark-plus me-2 text-primary"></i>Wgraj dokument Word dla opinii: {{ doc.sygnatura or "Bez sygnatury" }}
+      {% else %}
+        <i class="bi bi-file-earmark-arrow-up me-2 text-primary"></i>Aktualizacja: {{ doc.original_filename }}
+      {% endif %}
+    </h5>
+  </div>
+  <div class="card-body">
+    {% if is_empty_opinion %}
+      <div class="alert alert-info" role="alert">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        <strong>Informacja:</strong> Dodajesz dokument Word do pustej opinii. 
+        Wybierz plik w formacie Word (.doc, .docx).
+      </div>
+    {% else %}
+      <div class="alert alert-warning" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <strong>Uwaga:</strong> Ta funkcja zastąpi istniejący dokument nową wersją. 
+        Upewnij się, że wgrywasz właściwy plik w tym samym formacie.
+      </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="mt-4">
+      <div class="mb-4">
+        <label class="form-label">{% if is_empty_opinion %}Wybierz plik Word{% else %}Wybierz nową wersję pliku{% endif %}</label>
+        <input type="file" name="updated_file" class="form-control" required
+               accept="{% if is_empty_opinion %}.doc,.docx{% else %}.{{ doc.original_filename.split('.')[-1] }}{% endif %}">
+        <div class="form-text">
+          {% if is_empty_opinion %}
+            Akceptowane formaty: .doc, .docx (Microsoft Word)
+          {% else %}
+            Format pliku musi być zgodny z oryginałem ({{ doc.original_filename.split('.')[-1] }}).
+          {% endif %}
+        </div>
+      </div>
+      
+      {% if not is_empty_opinion %}
+      <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="keepHistory" name="keep_history" checked>
+        <label class="form-check-label" for="keepHistory">Zachowaj poprzednią wersję w historii</label>
+      </div>
+      {% endif %}
+      
+      <div class="mb-3">
+        <label class="form-label">Komentarz {% if is_empty_opinion %}do dodanego dokumentu{% else %}do aktualizacji{% endif %} (opcjonalny)</label>
+        <textarea name="comments" class="form-control" rows="3" placeholder="{% if is_empty_opinion %}Opisz dodawany dokument...{% else %}Opisz wprowadzone zmiany...{% endif %}"></textarea>
+      </div>
+      
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-{% if is_empty_opinion %}upload{% else %}save{% endif %}"></i> 
+        {% if is_empty_opinion %}Wgraj dokument{% else %}Aktualizuj dokument{% endif %}
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-header bg-light">
+    <h5 class="card-title mb-0">Informacje o opinii</h5>
+  </div>
+  <div class="card-body">
+    <p><strong>Sygnatura:</strong> {{ doc.sygnatura or "Brak" }}</p>
+    <p><strong>Status:</strong> {{ doc.step }}</p>
+    <p><strong>Data utworzenia:</strong> {{ doc.upload_time.strftime('%Y-%m-%d %H:%M') }}</p>
+    {% if doc.last_modified %}
+    <p><strong>Ostatnia modyfikacja:</strong> {{ doc.last_modified.strftime('%Y-%m-%d %H:%M') }}</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

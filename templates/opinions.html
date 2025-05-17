@@ -1,0 +1,189 @@
+0{% extends 'base.html' %}
+{% block content %}
+{% if request.query_params.get('delete_message') %}
+<div class="alert alert-success alert-dismissible fade show mb-4">
+  <i class="bi bi-check-circle-fill me-2"></i> {{ request.query_params.get('delete_message') }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Lista opinii sądowych</h2>
+</div>
+
+<!-- Filtrowanie (opcjonalne) -->
+<div class="card mb-4">
+  <div class="card-header bg-light">
+    <h5 class="card-title mb-0">
+      <i class="bi bi-funnel me-2"></i>Filtrowanie opinii
+    </h5>
+  </div>
+  <div class="card-body">
+    <form method="get" class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Status opinii</label>
+        <select class="form-select" name="step">
+          <option value="">Wszystkie statusy</option>
+          <option value="k1">k1 – Wywiad</option>
+          <option value="k2">k2 – Wyciąg z akt</option>
+          <option value="k3">k3 – Opinia</option>
+          <option value="k4">k4 – Archiwum</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Wyszukiwanie</label>
+        <input type="text" class="form-control" name="search" placeholder="Sygnatura, nazwa pliku...">
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-search me-1"></i> Filtruj
+          </button>
+          <a href="{{ url_for('list_opinions') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-circle me-1"></i> Resetuj
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Lista opinii -->
+<div class="card">
+  <div class="card-header bg-light">
+    <div class="d-flex justify-content-between align-items-center">
+      <h5 class="card-title mb-0">
+        <i class="bi bi-files me-2"></i>Wykaz opinii
+      </h5>
+      <span class="badge bg-primary">Łącznie: {{ opinions|length }}</span>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Sygnatura</th>
+            <th scope="col">Nazwa pliku</th>
+            <th scope="col" class="text-center">Status</th>
+            <th scope="col">Data dodania</th>
+            <th scope="col">Ostatnia zmiana</th>
+            <th scope="col" class="text-center">Akcje</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for opinion in opinions %}
+          <tr data-href="{{ url_for('opinion_detail', doc_id=opinion.id) }}">
+            <td>{{ opinion.id }}</td>
+            <td>
+              {% if opinion.sygnatura %}
+                <strong>{{ opinion.sygnatura }}</strong>
+              {% else %}
+                <span class="text-muted">Brak sygnatury</span>
+              {% endif %}
+            </td>
+            <td>{{ opinion.original_filename }}</td>
+            <!-- ikona statusu -->
+            <td class="text-center">
+              {% if opinion.step == 'k1' %}
+                <span class="badge bg-danger p-2">
+                  <i class="bi bi-pencil-fill me-1"></i>{{ opinion.step }}
+                </span>
+              {% elif opinion.step == 'k2' %}
+                <span class="badge bg-warning p-2">
+                  <i class="bi bi-journals me-1"></i>{{ opinion.step }}
+                </span>
+              {% elif opinion.step == 'k3' %}
+                <span class="badge bg-success p-2">
+                  <i class="bi bi-check-circle-fill me-1"></i>{{ opinion.step }}
+                </span>
+              {% else %}
+                <span class="badge bg-secondary p-2">
+                  <i class="bi bi-archive-fill me-1"></i>{{ opinion.step }}
+                </span>
+              {% endif %}
+            </td>
+            <td>{{ opinion.upload_time.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ opinion.last_modified.strftime('%Y-%m-%d %H:%M') if opinion.last_modified else '-' }}</td>
+            <td class="text-center" onclick="event.stopPropagation();">
+              <div class="btn-group">
+                <a href="{{ url_for('document_download', doc_id=opinion.id) }}" 
+                  class="btn btn-sm btn-outline-primary" 
+                  title="Pobierz dokument opinii">
+                  <i class="bi bi-download"></i>
+                </a>
+                <a href="{{ url_for('opinion_detail', doc_id=opinion.id) }}"
+                  class="btn btn-sm btn-outline-secondary"
+                  title="Szczegóły opinii">
+                  <i class="bi bi-eye"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if opinions|length == 0 %}
+    <div class="text-center py-5">
+      <i class="bi bi-file-earmark-text" style="font-size: 3rem; color: #6c757d;"></i>
+      <p class="mt-3 text-muted">Brak opinii w bazie danych.</p>
+      <p>Dodaj swoją pierwszą opinię używając jednej z poniższych opcji.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Przyciski akcji -->
+<div class="card mt-4">
+  <div class="card-header bg-light">
+    <h5 class="card-title mb-0">
+      <i class="bi bi-plus-circle me-2"></i>Dodaj nową opinię
+    </h5>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <i class="bi bi-file-earmark-word text-primary" style="font-size: 2rem;"></i>
+            <h5 class="mt-3">Dokument Word</h5>
+            <p class="text-muted">Utwórz opinię dodając istniejący plik Word (.doc, .docx)</p>
+            <a href="{{ url_for('upload_form') }}" class="btn btn-primary mt-2">
+              <i class="bi bi-file-earmark-word me-1"></i> Dodaj przez dokument Word
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4 mb-3">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <i class="bi bi-plus-square text-success" style="font-size: 2rem;"></i>
+            <h5 class="mt-3">Pusta opinia</h5>
+            <p class="text-muted">Utwórz pustą opinię, do której później dodasz dokumenty</p>
+            <a href="{{ url_for('create_empty_opinion_form') }}" class="btn btn-success mt-2">
+              <i class="bi bi-plus-circle me-1"></i> Utwórz pustą opinię
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4 mb-3">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <i class="bi bi-lightning text-info" style="font-size: 2rem;"></i>
+            <h5 class="mt-3">Szybki OCR</h5>
+            <p class="text-muted">Wgraj i przetwórz dokumenty PDF lub obrazy</p>
+            <a href="{{ url_for('quick_ocr_form') }}" class="btn btn-info mt-2">
+              <i class="bi bi-lightning me-1"></i> Szybki OCR
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+0# Wirtualne środowisko
+venv/
+env/
+.env/
+
+# Pliki pycache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Baza danych SQLite
+*.db
+
+# Katalog przechowywania plików
+files/
+
+# Logi i dane tymczasowe
+*.log
+tmp/
+temp/
+
+# Środowisko IDE
+.idea/
+.vscode/
+*.sh
+
+# Konfiguracja lokalna
+.env

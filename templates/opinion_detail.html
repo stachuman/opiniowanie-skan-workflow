@@ -1,0 +1,454 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- Powiadomienia -->
+{% if request.query_params.get('delete_message') %}
+<div class="alert alert-success alert-dismissible fade show mb-4">
+  <i class="bi bi-check-circle-fill me-2"></i> {{ request.query_params.get('delete_message') }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+{% if request.query_params.get('ocr_started') == 'true' %}
+<div class="alert alert-info alert-dismissible fade show mb-4">
+  <i class="bi bi-lightning-fill me-2"></i>
+  {% set count = request.query_params.get('count', '1') %}
+  {% if count|int > 1 %}
+    Rozpoczęto proces OCR dla {{ count }} dokumentów. Rozpoznawanie pisma w toku, proszę czekać.
+  {% else %}
+    Rozpoczęto proces OCR. Rozpoznawanie pisma w toku, proszę czekać.
+  {% endif %}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<!-- Nagłówek strony -->
+<div class="card mb-4">
+  <div class="card-header bg-light">
+    <div class="d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="bi bi-file-earmark-text me-2"></i>Opinia #{{ opinion.id }}
+      </h5>
+      <a href="{{ url_for('list_opinions') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Powrót do listy
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Informacje o opinii -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Informacje o opinii</h5>
+    <span class="badge {{ 'bg-danger' if opinion.step == 'k1' else 'bg-warning' if opinion.step == 'k2' else 'bg-success' if opinion.step == 'k3' else 'bg-secondary' }} p-2">
+      {% if opinion.step == 'k1' %}
+        <i class="bi bi-pencil-fill me-1"></i>
+      {% elif opinion.step == 'k2' %}
+        <i class="bi bi-journals me-1"></i>
+      {% elif opinion.step == 'k3' %}
+        <i class="bi bi-check-circle-fill me-1"></i>
+      {% else %}
+        <i class="bi bi-archive-fill me-1"></i>
+      {% endif %}
+      {{ opinion.step }}
+    </span>
+  </div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('opinion_update', doc_id=opinion.id) }}">
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label class="form-label">Sygnatura sprawy</label>
+          <input type="text" name="sygnatura" class="form-control" value="{{ opinion.sygnatura or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Status opinii</label>
+          <select name="step" class="form-select">
+            {% for val, label in steps %}
+              <option value="{{ val }}" {% if val==opinion.step %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      
+      <div class="row mb-3">
+        <div class="col-12">
+          <label class="form-label">Komentarze/uwagi</label>
+          <textarea name="comments" class="form-control" rows="3">{{ opinion.comments or '' }}</textarea>
+        </div>
+      </div>
+      
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card bg-light">
+            <div class="card-body py-2">
+              <p class="mb-1"><strong><i class="bi bi-file-earmark me-1"></i>Nazwa pliku:</strong> {{ opinion.original_filename }}</p>
+              <p class="mb-1"><strong><i class="bi bi-calendar-event me-1"></i>Data utworzenia:</strong> {{ opinion.upload_time.strftime('%Y-%m-%d %H:%M') }}</p>
+              {% if opinion.last_modified %}
+                <p class="mb-1"><strong><i class="bi bi-clock me-1"></i>Ostatnia modyfikacja:</strong> {{ opinion.last_modified.strftime('%Y-%m-%d %H:%M') }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <!-- Przyciski akcji -->
+          <div class="d-flex flex-wrap justify-content-end gap-2">
+            <div class="btn-group">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i> Zapisz zmiany
+              </button>
+            </div>
+            
+            <div class="btn-group">
+              {% if opinion.stored_filename.endswith('.empty') %}
+                <a href="{{ url_for('document_update_form', doc_id=opinion.id) }}" class="btn btn-outline-primary">
+                  <i class="bi bi-upload"></i> Wgraj dokument Word
+                </a>
+              {% else %}
+                <a href="{{ url_for('document_update_form', doc_id=opinion.id) }}" class="btn btn-outline-warning">
+                  <i class="bi bi-pencil"></i> Aktualizuj dokument
+                </a>
+              {% endif %}
+              <a href="{{ url_for('document_history', doc_id=opinion.id) }}" class="btn btn-outline-info">
+                <i class="bi bi-clock-history"></i> Historia wersji
+              </a>
+            </div>
+            
+            <div class="btn-group">
+              <a href="{{ url_for('document_download', doc_id=opinion.id) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-download"></i> Pobierz dokument
+              </a>
+              
+              <!-- Przycisk usuwania opinii -->
+              <button type="button" class="btn btn-outline-danger"
+                     data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">
+                <i class="bi bi-trash"></i> Usuń opinię
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Dokumenty powiązane -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-files me-2"></i>Dokumenty powiązane</h5>
+    <a href="{{ url_for('opinion_upload_form', doc_id=opinion.id) }}" class="btn btn-outline-primary">
+      <i class="bi bi-plus-circle"></i> Dodaj dokumenty
+    </a>
+  </div>
+  <div class="card-body">
+    {% if grouped_docs|length == 0 %}
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i> Brak dokumentów powiązanych z tą opinią.
+        <a href="{{ url_for('opinion_upload_form', doc_id=opinion.id) }}" class="alert-link">Dodaj pierwsze dokumenty</a>
+      </div>
+    {% else %}
+      
+      <!-- Status OCR dokumentów -->
+      {% if has_active_ocr %}
+        <div class="card mb-3">
+          <div class="card-header bg-light">
+            <h6 class="mb-0"><i class="bi bi-activity me-2"></i>Status OCR dokumentów</h6>
+          </div>
+          <div class="card-body">
+            <div class="progress" style="height: 25px;">
+              {% set progress_width = ((done_docs + failed_docs) / total_docs) * 100 if total_docs > 0 else 0 %}
+              <div class="progress-bar bg-success" role="progressbar" 
+                   style="width: {{ (done_docs / total_docs) * 100 if total_docs > 0 else 0 }}%" 
+                   aria-valuenow="{{ done_docs }}" aria-valuemin="0" aria-valuemax="{{ total_docs }}">
+                {{ done_docs }}
+              </div>
+              <div class="progress-bar bg-danger" role="progressbar" 
+                   style="width: {{ (failed_docs / total_docs) * 100 if total_docs > 0 else 0 }}%" 
+                   aria-valuenow="{{ failed_docs }}" aria-valuemin="0" aria-valuemax="{{ total_docs }}">
+                {{ failed_docs }}
+              </div>
+              <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" role="progressbar" 
+                   style="width: {{ (running_docs / total_docs) * 100 if total_docs > 0 else 0 }}%" 
+                   aria-valuenow="{{ running_docs }}" aria-valuemin="0" aria-valuemax="{{ total_docs }}">
+                {{ running_docs }}
+              </div>
+              <div class="progress-bar bg-secondary progress-bar-striped" role="progressbar" 
+                   style="width: {{ (pending_docs / total_docs) * 100 if total_docs > 0 else 0 }}%" 
+                   aria-valuenow="{{ pending_docs }}" aria-valuemin="0" aria-valuemax="{{ total_docs }}">
+                {{ pending_docs }}
+              </div>
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+              <div>
+                <span class="badge bg-success p-2 me-1"><i class="bi bi-check-circle me-1"></i>{{ done_docs }} zakończonych</span>
+                <span class="badge bg-danger p-2 me-1"><i class="bi bi-x-circle me-1"></i>{{ failed_docs }} z błędami</span>
+                <span class="badge bg-warning p-2 me-1"><i class="bi bi-arrow-repeat me-1"></i>{{ running_docs }} w trakcie</span>
+                <span class="badge bg-secondary p-2"><i class="bi bi-hourglass-split me-1"></i>{{ pending_docs }} oczekujących</span>
+              </div>
+              <div>
+                <span class="badge bg-dark p-2"><i class="bi bi-files me-1"></i>Łącznie: {{ total_docs }} dokumentów</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Karty z grupami dokumentów -->
+      <div class="accordion" id="documentsAccordion">
+        {% for doc_type, docs in grouped_docs.items() %}
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="heading{{ doc_type|replace(' ', '') }}">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" 
+                      data-bs-target="#collapse{{ doc_type|replace(' ', '') }}" 
+                      aria-expanded="true" aria-controls="collapse{{ doc_type|replace(' ', '') }}">
+                {% if doc_type == 'Opinia' %}
+                  <i class="bi bi-file-earmark-text me-2"></i>
+                {% elif doc_type == 'Akta' %}
+                  <i class="bi bi-folder me-2"></i>
+                {% elif doc_type == 'Dokumentacja medyczna' %}
+                  <i class="bi bi-file-medical me-2"></i>
+                {% elif doc_type == 'Wniosek' %}
+                  <i class="bi bi-file-earmark-text me-2"></i>
+                {% elif doc_type == 'Zaświadczenie' %}
+                  <i class="bi bi-file-earmark-check me-2"></i>
+                {% else %}
+                  <i class="bi bi-files me-2"></i>
+                {% endif %}
+                {{ doc_type }} <span class="badge bg-secondary ms-2">{{ docs|length }}</span>
+              </button>
+            </h2>
+            <div id="collapse{{ doc_type|replace(' ', '') }}" class="accordion-collapse collapse show" 
+                 aria-labelledby="heading{{ doc_type|replace(' ', '') }}">
+              <div class="accordion-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Nazwa pliku</th>
+                        <th class="text-center">Typ</th>
+                        <th class="text-center">OCR</th>
+                        <th>Data dodania</th>
+                        <th class="text-end">Akcje</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for doc in docs %}
+                        <tr>
+                          <td>{{ doc.original_filename }}</td>
+                          <td class="text-center">
+                            {% if doc.mime_type and doc.mime_type.startswith('image/') %}
+                              <i class="bi bi-file-earmark-image text-info" title="Obraz"></i>
+                            {% elif doc.mime_type == 'application/pdf' %}
+                              <i class="bi bi-file-earmark-pdf text-danger" title="PDF"></i>
+                            {% elif doc.mime_type and doc.mime_type.startswith('application/') and 'word' in doc.mime_type %}
+                              <i class="bi bi-file-earmark-word text-primary" title="Word"></i>
+                            {% elif doc.mime_type == 'text/plain' %}
+                              <i class="bi bi-file-earmark-text text-secondary" title="TXT"></i>
+                            {% else %}
+                              <i class="bi bi-file-earmark" title="Dokument"></i>
+                            {% endif %}
+                          </td>
+                          <td class="text-center">
+                            {% if doc.ocr_status == 'done' %}
+                              <span class="badge bg-success p-2">
+                                <i class="bi bi-check-circle"></i>
+                                {% if doc.ocr_confidence %}
+                                  <small class="ms-1">{{ (doc.ocr_confidence * 100) | round }}%</small>
+                                {% endif %}
+                              </span>
+                            {% elif doc.ocr_status == 'running' %}
+                              <div class="d-flex align-items-center" title="{{ doc.ocr_progress_info or 'OCR w trakcie' }}">
+                                <div class="progress flex-grow-1" style="height: 12px; width: 60px;">
+                                  <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+                                      role="progressbar" 
+                                      style="width: {{ (doc.ocr_progress or 0.0) * 100 }}%">
+                                  </div>
+                                </div>
+                                <small class="ms-1 badge bg-primary">{{ ((doc.ocr_progress or 0.0) * 100) | round }}%</small>
+                              </div>
+                            {% elif doc.ocr_status == 'fail' %}
+                              <span class="badge bg-danger p-2">
+                                <i class="bi bi-x-circle"></i>
+                              </span>
+                            {% elif doc.ocr_status == 'pending' %}
+                              <span class="badge bg-warning p-2">
+                                <i class="bi bi-hourglass-split"></i>
+                              </span>
+                            {% endif %}
+                          </td>
+                          <td>{{ doc.upload_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                          <td class="text-end document-actions" data-doc-id="{{ doc.id }}" data-doc-name="{{ doc.original_filename }}">
+                            <div class="d-flex flex-nowrap gap-1">
+                              <!-- Przycisk szybkiego podglądu -->
+                              <button type="button" class="btn btn-sm btn-outline-info px-2" 
+                                onclick="event.preventDefault(); event.stopPropagation(); quickPreview('{{ doc.id }}', '{{ doc.original_filename }}');" 
+                                title="Szybki podgląd">
+                                <i class="bi bi-eye"></i>
+                              </button>
+                              
+                              <!-- Przycisk uruchamiania OCR -->
+                              {% if doc.mime_type and (doc.mime_type == 'application/pdf' or doc.mime_type.startswith('image/')) and doc.ocr_status != 'running' %}
+                                <form action="{{ url_for('document_run_ocr', doc_id=doc.id) }}" method="post" class="d-inline">
+                                  <button type="submit" class="btn btn-sm btn-outline-warning px-2" title="Uruchom OCR">
+                                    <i class="bi bi-magic"></i>
+                                  </button>
+                                </form>
+                              {% endif %}
+                              
+                              <!-- Przycisk zaawansowanego podglądu PDF -->
+                              {% if doc.mime_type == 'application/pdf' %}
+                                <a href="{{ url_for('document_pdf_viewer', doc_id=doc.id) }}" class="btn btn-sm btn-outline-success px-2" title="Zaawansowany podgląd">
+                                  <i class="bi bi-search"></i>
+                                </a>
+                              {% endif %}
+                              
+                              <!-- Przycisk pobierania -->
+                              <a href="{{ url_for('document_download', doc_id=doc.id) }}" class="btn btn-sm btn-outline-secondary px-2" title="Pobierz dokument">
+                                <i class="bi bi-download"></i>
+                              </a>
+                              
+                              <!-- Przycisk podglądu tekstu -->
+                              {% if doc.ocr_status == 'done' or doc.mime_type == 'text/plain' or (doc.original_filename and doc.original_filename.lower().endswith('.txt')) %}
+                                <a href="{{ url_for('document_text_preview', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary px-2" title="Podgląd tekstu">
+                                  <i class="bi bi-file-earmark-text"></i>
+                                </a>
+                              {% endif %}
+                            </div>
+                          </td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal podglądu dokumentu -->
+<div class="modal fade" id="quickPreviewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="previewModalTitle">
+          <i class="bi bi-eye me-2"></i>Podgląd dokumentu
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="previewModalBody" style="min-height: 500px; padding: 0;">
+        <div class="d-flex justify-content-center align-items-center" style="height: 500px;">
+          <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Ładowanie...</span>
+          </div>
+          <span class="ms-3">Wczytywanie podglądu...</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a href="#" class="btn btn-primary" id="previewModalLink">
+          <i class="bi bi-arrows-fullscreen me-1"></i>Otwórz pełny podgląd
+        </a>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Zamknij</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal potwierdzenia usunięcia -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Potwierdź usunięcie
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <strong>Uwaga!</strong> Usunięcie opinii spowoduje również usunięcie wszystkich powiązanych dokumentów!
+        </div>
+        <p>Czy na pewno chcesz usunąć opinię <strong>{{ opinion.original_filename }}</strong>?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Anuluj</button>
+        <form action="{{ url_for('document_delete', doc_id=opinion.id) }}" method="post">
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i>Usuń opinię
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Sprawdź czy mamy dokumenty w trakcie OCR
+{% if has_active_ocr %}
+(function() {
+  // Odświeżaj stronę co 10 sekund, jeśli mamy dokumenty w trakcie przetwarzania
+  setTimeout(function() {
+    location.reload();
+  }, 10000);
+})();
+{% endif %}
+
+// Funkcja do szybkiego podglądu dokumentu
+function quickPreview(docId, docName) {
+  // Sprawdź MIME type dokumentu lub wywnioskuj z nazwy pliku
+  const isImageOrPdf = docName.toLowerCase().endsWith('.pdf') || 
+                       docName.toLowerCase().match(/\.(jpg|jpeg|png|gif|tiff|bmp)$/);
+  
+  if (isImageOrPdf) {
+    // Dla PDF i obrazów otwórz bezpośrednio w nowym oknie
+    window.open(`/document/${docId}/preview`, '_blank');
+  } else {
+    // Dla innych typów plików używaj modalnego podglądu
+    // Ustaw tytuł modalu
+    document.getElementById('previewModalTitle').innerHTML = `<i class="bi bi-eye me-2"></i>${docName}`;
+    
+    // Ustaw link do pełnego podglądu
+    document.getElementById('previewModalLink').href = `/document/${docId}`;
+    
+    // Pokaż spinner ładowania
+    document.getElementById('previewModalBody').innerHTML = `
+      <div class="d-flex justify-content-center align-items-center" style="height: 500px;">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+          <span class="visually-hidden">Ładowanie...</span>
+        </div>
+        <span class="ms-3">Wczytywanie podglądu...</span>
+      </div>
+    `;
+    
+    // Otwórz modal
+    new bootstrap.Modal(document.getElementById('quickPreviewModal')).show();
+    
+    // Pobierz zawartość podglądu
+    fetch(`/document/${docId}/preview-content`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Błąd podczas ładowania podglądu');
+        }
+        return response.text();
+      })
+      .then(html => {
+        document.getElementById('previewModalBody').innerHTML = html;
+      })
+      .catch(error => {
+        document.getElementById('previewModalBody').innerHTML = `
+          <div class="alert alert-danger m-3">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Błąd!</strong> Nie udało się załadować podglądu: ${error.message}
+          </div>
+        `;
+      });
+  }
+}
+</script>
+{% endblock %}

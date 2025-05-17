@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    /* Style dla PDF Viewer */
+    .pdf-container {
+      height: 70vh;
+      width: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .pdf-toolbar {
+      background-color: #f5f5f5;
+      border-bottom: 1px solid #ddd;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .pdf-pages-info {
+      margin: 0 15px;
+    }
+    
+    .pdf-content {
+      flex: 1;
+      overflow: auto;
+      background-color: #eee;
+      display: flex;
+      justify-content: center;
+    }
+    
+    .pdf-canvas-container {
+      margin: 10px auto;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      background-color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="pdf-container">
+    <div class="pdf-toolbar">
+      <div>
+        <button id="prevPage" class="btn btn-sm btn-outline-secondary" disabled>
+          <i class="bi bi-chevron-left"></i> Poprzednia
+        </button>
+        <button id="nextPage" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-chevron-right"></i> Następna
+        </button>
+        <span class="pdf-pages-info">
+          Strona <span id="currentPage">1</span> z <span id="totalPages">?</span>
+        </span>
+      </div>
+      <div>
+        <button id="zoomOut" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-zoom-out"></i>
+        </button>
+        <span id="zoomLevel">100%</span>
+        <button id="zoomIn" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-zoom-in"></i>
+        </button>
+      </div>
+    </div>
+    <div class="pdf-content" id="pdfContent">
+      <div id="pdfCanvasContainer" class="pdf-canvas-container">
+        <canvas id="pdfCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // To pole zostanie wypełnione przez serwer
+    const pdfUrl = "{{ pdf_url }}";
+  </script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+se.html' %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Podgląd pliku: {{ doc.original_filename }}</h5>
+    <div>
+      <a href="{{ url_for('document_detail', doc_id=doc.id) }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Powrót
+      </a>
+      <a href="{{ url_for('document_download', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary ms-2">
+        <i class="bi bi-download"></i> Pobierz
+      </a>
+    </div>
+  </div>
+  <div class="card-body">
+    {% if error_message %}
+      <div class="alert alert-danger">{{ error_message }}</div>
+    {% elif content %}
+      <div class="bg-light p-3 rounded">
+        <pre class="text-content" style="white-space: pre-wrap; font-family: 'Courier New', monospace; max-height: 80vh; overflow-y: auto;">{{ content }}</pre>
+      </div>
+    {% else %}
+      <div class="alert alert-warning">Plik jest pusty lub nie zawiera tekstu.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

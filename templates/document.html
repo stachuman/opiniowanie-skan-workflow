@@ -1,0 +1,426 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- Powiadomienia -->
+{% if request.query_params.get('ocr_restarted') == 'true' %}
+<div class="alert alert-success alert-dismissible fade show mb-4">
+  <i class="bi bi-info-circle-fill"></i> Proces OCR został ponownie uruchomiony. Odświeżaj stronę, aby śledzić postęp.
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<!-- Nagłówek dokumentu -->
+<div class="card">
+  <div class="card-header bg-light">
+    <h5 class="card-title mb-0">
+      <i class="bi bi-file-earmark me-2"></i>Dokument #{{ doc.id }} – {{ doc.original_filename }}
+    </h5>
+  </div>
+  <div class="card-body">
+    
+    <!-- Informacje o dokumencie i typ -->
+    <div class="row mb-3">
+      <div class="col-md-12">
+        <div class="d-flex">
+          {% if doc.mime_type and doc.mime_type.startswith('image/') %}
+            <span class="badge bg-info me-2"><i class="bi bi-file-earmark-image"></i> Obraz</span>
+          {% elif doc.mime_type == 'application/pdf' %}
+            <span class="badge bg-danger me-2"><i class="bi bi-file-earmark-pdf"></i> PDF</span>
+          {% elif doc.mime_type and doc.mime_type.startswith('application/') and 'word' in doc.mime_type %}
+            <span class="badge bg-primary me-2"><i class="bi bi-file-earmark-word"></i> Word</span>
+          {% elif doc.mime_type == 'text/plain' %}
+            <span class="badge bg-secondary me-2"><i class="bi bi-file-earmark-text"></i> TXT</span>
+          {% else %}
+            <span class="badge bg-secondary me-2"><i class="bi bi-file-earmark"></i> Dokument</span>
+          {% endif %}
+          <span class="text-muted small">Przesłano: {{ doc.upload_time.strftime('%Y-%m-%d %H:%M') }}</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Formularz edycji -->
+    <form method="post" class="row gy-2 gx-3 align-items-center">
+      <!-- Sygnatura -->
+      <div class="col-12 col-md-4">
+        <label class="form-label">Sygnatura</label>
+        <input type="text" name="sygnatura" class="form-control" value="{{ doc.sygnatura or '' }}">
+      </div>
+      
+      <!-- Typ -->
+      <div class="col-12 col-md-4">
+        <label class="form-label">Rodzaj dokumentu</label>
+        <select name="doc_type" class="form-select">
+          {% set types = ['Opinia', 'Akta', 'Dokumentacja medyczna', 'Wniosek', 'Zaświadczenie', 'Inne'] %}
+          <option value="" {% if not doc.doc_type %}selected{% endif %}>– wybierz –</option>
+          {% for t in types %}
+            <option value="{{ t }}" {% if t==doc.doc_type %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <!-- Status -->
+      <div class="col-12 col-md-2">
+        <label class="form-label">Status</label>
+        <select name="step" class="form-select">
+          {% for val, label in steps %}
+            <option value="{{ val }}" {% if val==doc.step %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="col-auto mt-3">
+        <button class="btn btn-primary">Zapisz</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Podgląd dokumentu -->
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">Podgląd dokumentu</h6>
+          <div class="btn-toolbar">
+            <!-- Przyciski akcji dla dokumentu -->
+            <div class="btn-group me-2">
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('document_download', doc_id=doc.id) }}">
+                <i class="bi bi-download"></i> Pobierz
+              </a>
+
+              {% if doc.mime_type == 'application/pdf' and doc.ocr_status == 'done' %}
+              <a href="{{ url_for('document_pdf_viewer', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-search"></i> Zaawansowany podgląd
+              </a>
+              {% endif %}
+            </div>
+            
+            <div class="btn-group">
+              <!-- Akcje specyficzne dla dokumentów Word -->
+              {% if doc.mime_type and 'word' in doc.mime_type %}
+              <a class="btn btn-sm btn-outline-warning" href="{{ url_for('document_update_form', doc_id=doc.id) }}">
+                <i class="bi bi-pencil"></i> Aktualizuj dokument
+              </a>
+              <a class="btn btn-sm btn-outline-info" href="{{ url_for('document_history', doc_id=doc.id) }}">
+                <i class="bi bi-clock-history"></i> Historia wersji
+              </a>
+              {% endif %}
+
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('document_preview', doc_id=doc.id) }}" target="_blank">
+                <i class="bi bi-eye"></i> Otwórz w przeglądarce
+              </a>
+              
+              <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">
+                <i class="bi bi-trash"></i> Usuń
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card-body">
+        {% if doc.mime_type and doc.mime_type.startswith('image/') %}
+          <!-- Podgląd obrazu -->
+          <div class="text-center">
+            <img src="{{ url_for('document_preview', doc_id=doc.id) }}" 
+                 alt="Podgląd dokumentu" 
+                 class="img-fluid" 
+                 style="max-height: 500px; width: auto; max-width: 100%;">
+          </div>
+          
+        {% elif doc.mime_type == 'application/pdf' %}
+          <!-- Podgląd PDF -->
+          <div class="pdf-container" style="height: 600px; width: 100%;">
+            <object data="{{ url_for('document_preview', doc_id=doc.id) }}" 
+                    type="application/pdf" 
+                    width="100%" 
+                    height="100%">
+                <p>
+                    Twoja przeglądarka nie obsługuje wyświetlania PDFów.
+                    <a href="{{ url_for('document_download', doc_id=doc.id) }}">
+                        Pobierz plik
+                    </a>
+                </p>
+            </object>
+          </div>
+          
+          {% if doc.ocr_status == 'done' %}
+          <div class="alert alert-info mt-3">
+            <i class="bi bi-info-circle"></i> 
+            <strong>Funkcja "Podświetl & Kopiuj"</strong> dostępna w zaawansowanym podglądzie pozwala na szybkie zaznaczanie i kopiowanie fragmentów tekstu rozpoznanych przez OCR.
+          </div>
+          {% endif %}
+
+        {% elif doc.mime_type == 'text/plain' or (doc.original_filename and doc.original_filename.lower().endswith('.txt')) %}
+          <!-- Podgląd tekstu -->
+          <div class="card bg-light">
+            <div class="card-body">
+              {% if doc_text_preview %}
+                <pre class="text-preview" style="max-height: 500px; overflow-y: auto; white-space: pre-wrap;">{{ doc_text_preview }}</pre>
+                {% if doc_text_preview|length > 1000 %}
+                  <div class="mt-2 text-center">
+                    <a href="{{ url_for('document_text_preview', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-eye"></i> Pokaż pełny tekst
+                    </a>
+                  </div>
+                {% endif %}
+              {% else %}
+                <div class="text-center">
+                  <p>Podgląd tekstu niedostępny w oknie dokumentu.</p>
+                  <a href="{{ url_for('document_text_preview', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-eye"></i> Otwórz podgląd tekstowy
+                  </a>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+          
+        {% elif ocr_txt %}
+          <!-- Podgląd wyniku OCR -->
+          <div class="card bg-light">
+            <div class="card-body">
+              {% if ocr_text_preview %}
+                <pre class="text-preview system-font" style="max-height: 500px; overflow-y: auto; white-space: pre-wrap;">{{ ocr_text_preview }}</pre>
+                {% if ocr_text_preview|length > 1000 %}
+                  <div class="mt-2 text-center">
+                    <a href="{{ url_for('document_text_preview', doc_id=ocr_txt.id) }}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-eye"></i> Pokaż pełny tekst OCR
+                    </a>
+                  </div>
+                {% endif %}
+              {% else %}
+                <div class="text-center">
+                  <p>Podgląd tekstu OCR niedostępny w oknie dokumentu.</p>
+                  <a href="{{ url_for('document_text_preview', doc_id=ocr_txt.id) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-eye"></i> Otwórz podgląd tekstowy OCR
+                  </a>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+          
+        {% else %}
+          <!-- Brak podglądu dla pozostałych typów plików -->
+          <div class="text-center text-muted py-5">
+            <i class="bi bi-file-earmark" style="font-size: 3rem;"></i>
+            <p class="mt-3">Podgląd niedostępny dla tego typu pliku.</p>
+            <a class="btn btn-outline-secondary" href="{{ url_for('document_download', doc_id=doc.id) }}">
+              Pobierz plik
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+    
+<!-- OCR Status i pasek postępu -->
+{% if doc.ocr_status == 'running' %}
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0">Postęp OCR</h6>
+      </div>
+      <div class="card-body">
+        <div class="progress" style="height: 25px;">
+          <div id="ocr-progress-bar" 
+               class="progress-bar progress-bar-striped progress-bar-animated" 
+               role="progressbar" 
+               aria-valuenow="{{ (doc.ocr_progress or 0.0) * 100 }}" 
+               aria-valuemin="0" 
+               aria-valuemax="100" 
+               style="width: {{ (doc.ocr_progress or 0.0) * 100 }}%">
+            <span id="ocr-progress-text">{{ ((doc.ocr_progress or 0.0) * 100) | round }}%</span>
+          </div>
+        </div>
+        <div class="text-center mt-2" id="ocr-progress-info">
+          {{ doc.ocr_progress_info or "Przetwarzanie..." }}
+          {% if doc.ocr_current_page and doc.ocr_total_pages %}
+          (Strona {{ doc.ocr_current_page }}/{{ doc.ocr_total_pages }})
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Informacje i akcje OCR -->
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0">Status OCR</h6>
+      </div>
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div class="d-flex align-items-center">
+            {% if doc.ocr_status == 'done' %}
+              <span class="badge bg-success p-2 me-2">
+                <i class="bi bi-check-circle"></i> OCR zakończony
+              </span>
+              {% if doc.ocr_confidence %}
+                <span class="badge bg-info p-2">
+                  <i class="bi bi-graph-up"></i> Pewność: {{ (doc.ocr_confidence * 100) | round }}%
+                </span>
+              {% endif %}
+            {% elif doc.ocr_status == 'running' %}
+              <span class="badge bg-primary p-2">
+                <i class="bi bi-arrow-repeat"></i> 
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                OCR w trakcie przetwarzania
+              </span>
+            {% elif doc.ocr_status == 'fail' %}
+              <span class="badge bg-danger p-2">
+                <i class="bi bi-x-circle"></i> OCR zakończony błędem
+              </span>
+            {% elif doc.ocr_status == 'pending' %}
+              <span class="badge bg-warning p-2">
+                <i class="bi bi-hourglass-split"></i> OCR oczekuje w kolejce
+              </span>
+            {% elif doc.ocr_status == 'none' %}
+              <span class="badge bg-secondary p-2">
+                <i class="bi bi-dash-circle"></i> OCR niewykonany
+              </span>
+            {% endif %}
+          </div>
+          
+          <div>
+            {% if doc.ocr_status == 'done' and ocr_txt %}
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('document_download', doc_id=ocr_txt.id) }}">
+                <i class="bi bi-file-earmark-text"></i> Pobierz tekst
+              </a>
+              
+              <form action="{{ url_for('document_run_ocr', doc_id=doc.id) }}" method="post" class="d-inline">
+                <button class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-arrow-clockwise"></i> Wykonaj OCR ponownie
+                </button>
+              </form>
+            {% elif doc.ocr_status == 'fail' %}
+              <form action="{{ url_for('document_run_ocr', doc_id=doc.id) }}" method="post" class="d-inline">
+                <button class="btn btn-sm btn-outline-danger">
+                  <i class="bi bi-arrow-clockwise"></i> Spróbuj ponownie OCR
+                </button>
+              </form>
+            {% elif doc.ocr_status == 'none' %}
+              <form action="{{ url_for('document_run_ocr', doc_id=doc.id) }}" method="post" class="d-inline">
+                <button class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-play"></i> Uruchom OCR
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+        
+        <!-- Wyniki OCR (jeśli dostępne) -->
+        {% if ocr_txt and ocr_text_preview and not (doc.mime_type and doc.mime_type == 'text/plain') and not doc.original_filename.lower().endswith('.txt') %}
+          <div class="card bg-light">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h6 class="mb-0">Rozpoznany tekst</h6>
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('document_download', doc_id=ocr_txt.id) }}">
+                <i class="bi bi-download"></i> Pobierz tekst
+              </a>
+            </div>
+            <div class="card-body">
+              <pre class="text-preview bg-white p-3 border rounded" style="max-height: 500px; overflow-y: auto; white-space: pre-wrap; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 0.9rem;">{{ ocr_text_preview }}</pre>
+              {% if ocr_text_preview|length > 1000 %}
+                <div class="text-center mt-3">
+                  <a href="{{ url_for('document_text_preview', doc_id=ocr_txt.id) }}" class="btn btn-outline-primary">
+                    <i class="bi bi-eye"></i> Pokaż pełny tekst OCR
+                  </a>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal potwierdzenia usunięcia -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Potwierdź usunięcie</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Czy na pewno chcesz usunąć dokument <strong>{{ doc.original_filename }}</strong>?</p>
+        {% if doc.is_main %}
+          <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Uwaga!</strong> To jest opinia główna. Usunięcie spowoduje również usunięcie wszystkich powiązanych dokumentów!
+          </div>
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+        <form action="{{ url_for('document_delete', doc_id=doc.id) }}" method="post">
+          <button type="submit" class="btn btn-danger">Usuń</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Auto-refresh if OCR is in progress
+  {% if doc.ocr_status in ['running', 'pending'] %}
+  (function() {
+    function updateProgress() {
+      fetch('/api/document/{{ doc.id }}/ocr-progress')
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'running') {
+            // Aktualizuj pasek postępu
+            const progressPercent = (data.progress * 100).toFixed(0);
+            const progressBar = document.getElementById('ocr-progress-bar');
+            const progressText = document.getElementById('ocr-progress-text');
+            const progressInfo = document.getElementById('ocr-progress-info');
+            
+            if (progressBar) {
+              progressBar.style.width = progressPercent + '%';
+              progressBar.setAttribute('aria-valuenow', progressPercent);
+            }
+            
+            if (progressText) {
+              progressText.textContent = progressPercent + '%';
+            }
+            
+            if (progressInfo) {
+              let infoText = data.info || "Przetwarzanie...";
+              if (data.current_page && data.total_pages) {
+                infoText += ` (Strona ${data.current_page}/${data.total_pages})`;
+              }
+              progressInfo.textContent = infoText;
+            }
+            
+            // Kontynuuj aktualizację
+            setTimeout(updateProgress, 2000);
+          } else if (data.status === 'done' || data.status === 'fail') {
+            // OCR zakończony, odświeżamy stronę
+            location.reload();
+          } else {
+            // Status pending lub inny, sprawdzaj rzadziej
+            setTimeout(updateProgress, 5000);
+          }
+        })
+        .catch(error => {
+          console.error('Błąd pobierania postępu OCR:', error);
+          // W przypadku błędu ponowna próba za 10 sekund
+          setTimeout(updateProgress, 10000);
+        });
+    }
+    
+    // Rozpocznij aktualizację postępu
+    updateProgress();
+  })();
+  {% endif %}
+</script>
+{% endblock %}

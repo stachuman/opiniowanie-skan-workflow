@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Szybki OCR</h2>
+  <div>
+    <a href="{{ url_for('list_opinions') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Powrót do listy opinii
+    </a>
+  </div>
+</div>
+
+{% if error_message %}
+<div class="alert alert-warning alert-dismissible fade show mb-4">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ error_message }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="card mb-4">
+  <div class="card-header bg-light">
+    <h5 class="card-title mb-0">
+      <i class="bi bi-lightning me-2"></i>Rozpoznawanie tekstu bez przypisywania do opinii
+    </h5>
+  </div>
+  <div class="card-body">
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle-fill me-2"></i>
+      <strong>Szybki OCR</strong> umożliwia wgranie i przetworzenie dokumentów bez przypisywania ich do konkretnej opinii.
+      Dokumenty będą widoczne w sekcji "Wszystkie dokumenty" oraz w specjalnym kontenerze "Dokumenty niezwiązane z opiniami".
+    </div>
+    
+    <form method="post" enctype="multipart/form-data" class="mt-4" id="ocrForm">
+      <div class="mb-4">
+        <label class="form-label">Wybierz pliki do rozpoznania tekstu</label>
+        <input type="file" name="files" class="form-control" multiple required
+               accept="{{ allowed_types }}">
+        <div class="form-text">
+          <p>Obsługiwane formaty:</p>
+          <ul class="list-unstyled">
+            <li><i class="bi bi-file-earmark-pdf text-danger me-2"></i> Dokumenty PDF (*.pdf)</li>
+            <li><i class="bi bi-file-earmark-image text-info me-2"></i> Obrazy (*.jpg, *.jpeg, *.png, *.tif, *.tiff, *.bmp, *.webp)</li>
+          </ul>
+        </div>
+      </div>
+      
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <strong>Uwaga:</strong> Ta funkcja nie obsługuje plików Word (.doc, .docx). 
+        Aby dodać dokument Word, użyj opcji "Dodaj opinię przez dokument Word".
+      </div>
+      
+      <div class="alert alert-info mt-4">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        <strong>Informacja:</strong> Po wgraniu, dokumenty będą automatycznie przetwarzane w tle.
+        Możesz kontynuować korzystanie z aplikacji podczas gdy OCR będzie wykonywany.
+        Status przetwarzania będzie widoczny na stronie dokumentu.
+      </div>
+      
+      <div class="d-flex justify-content-end mt-4">
+        <a href="{{ url_for('list_opinions') }}" class="btn btn-outline-secondary me-2">Anuluj</a>
+        <button type="submit" class="btn btn-primary" id="submitButton">
+          <i class="bi bi-lightning me-1"></i> Rozpocznij OCR
+        </button>
+      </div>
+    </form>
+    
+    <!-- Element dla wskaźnika ładowania - domyślnie ukryty -->
+    <div id="processingIndicator" style="display: none;" class="mt-4">
+      <div class="card bg-light">
+        <div class="card-body text-center py-4">
+          <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Ładowanie...</span>
+          </div>
+          <h5>Rozpoznawanie pisma w toku</h5>
+          <p>Proszę czekać. Przetwarzanie dokumentów może potrwać od kilkunastu sekund do kilku minut,
+             w zależności od rozmiaru i złożoności.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-light">
+    <h5 class="card-title mb-0">
+      <i class="bi bi-info-circle me-2"></i>Informacje o procesie OCR
+    </h5>
+  </div>
+  <div class="card-body">
+    <p>Po wysłaniu, dokument zostanie automatycznie poddany procesowi OCR (Optical Character Recognition):</p>
+    <ol>
+      <li><strong>Obrazy</strong> - zostaną przetworzone bezpośrednio przez system OCR</li>
+      <li><strong>Pliki PDF</strong> - zostaną podzielone na obrazy poszczególnych stron i przetworzone</li>
+    </ol>
+    <p>System używa zaawansowanego modelu AI do rozpoznawania tekstu, co pozwala na skuteczne przetwarzanie zarówno dokumentów drukowanych, jak i ręcznie pisanych.</p>
+    <p class="text-muted small">Przetwarzanie OCR może potrwać od kilkunastu sekund do kilku minut, w zależności od rozmiaru i złożoności dokumentu.</p>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('ocrForm');
+  const submitButton = document.getElementById('submitButton');
+  const processingIndicator = document.getElementById('processingIndicator');
+  
+  form.addEventListener('submit', function() {
+    // Ukryj przycisk i pokaż wskaźnik przetwarzania
+    submitButton.disabled = true;
+    processingIndicator.style.display = 'block';
+    
+    // Przewiń do wskaźnika przetwarzania
+    processingIndicator.scrollIntoView({ behavior: 'smooth' });
+  });
+});
+</script>
+{% endblock %}

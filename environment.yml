@@ -1,0 +1,31 @@
+name: court-workflow
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python =3.11
+  - fastapi =0.110
+  - uvicorn =0.29
+  - sqlmodel =0.0.14
+  - jinja2 =3.1
+  - python-multipart
+  - pdf2image          # render stron PDF → PNG
+  - pillow
+  - pytesseract        # wrapper do Tesseract
+  - poppler            # lib do pdf2image (Linux)
+  - ocrmypdf
+  - pikepdf
+  - redis
+  - rq
+  - pip
+  - pip:
+      - numpy==1.26.*
+      - torch==2.2.2+cu121 -f https://download.pytorch.org/whl/torch_stable.html
+      - transformers>=4.41.0
+      - git+https://github.com/huggingface/transformers  # Najnowsza wersja transformers
+      - sentencepiece     # wymagane przez TrOCR
+      - torchvision
+      - accelerate>=0.27.0  # Potrzebne dla Qwen VL
+      - qwen-vl-utils>=0.1.5  # Narzędzia dla modelu Qwen
+      - easyocr==1.7.1    # (tylko zależność pomocnicza; nie musisz instalować całego docTR)
+      - trp==0.0.6        # minimalny parser hOCR → sidecar (opcjonalnie)
